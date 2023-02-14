@@ -1,6 +1,5 @@
 import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
+from scipy.special import gamma, gammainc
 from numerics import *
 
 class SDE(object):
@@ -15,17 +14,17 @@ class SDE(object):
     
 
 
-class LinSDE(SDE):
+class Linear_SDE(SDE):
     '''
     dX = (mu * X)dt + (sigma * X)dB
     '''
     def __init__(self, x0, mu = 1, sigma = 0.5):       
         self.mu, self.sigma = mu, sigma
-        self.f = lambda t, x : mu * x 
-        self.g = lambda t, x : sigma * x
+        f = lambda t, x : mu * x 
+        g = lambda t, x : sigma * x
         self.L1g = lambda t, x: sigma**2 * x
-        self.x0 = x0
         self.eq = f'dXt = {self.mu}Xdt + {self.sigma}XdW'
+        super().__init__(f, g, x0)
         
     def exact_solution(self, t, W):
         mu = self.mu
@@ -42,21 +41,24 @@ class LinSDE(SDE):
         return x0 * np.exp(mu * t)
     
 
-class G2SDE(SDE):
+class Gamma_SDE(SDE):
     """
     SDE with two parameter Gamma stationary distribution (shape, scale)
     and exponentially decaying autocorrelation c(l) = e^-ac*l
     """
     def __init__(self, shape, scale, ac, x0) -> None:
         self.shape, self.scale, self.ac = shape, scale, ac
-        self.x0 = x0
-        self.f = lambda t, x: - self.ac * (x - self.shape * self.scale)
-        self.g = lambda t, x: np.sqrt(2 * self.ac * self.scale * x)
-        pass
+        f = lambda t, x: - self.ac * (x - self.shape * self.scale)
+        g = lambda t, x: np.sqrt(2 * self.ac * self.scale * x)
+        super().__init__(f, g, x0)
 
-test = G2SDE(2.064, 1.411, 0.25, 1.7)
-t, W = BM(t_end = 100, N = 10**6)
-X = num_solution(test, t, W)
 
-pd.plotting.autocorrelation_plot(X)
-plt.show()
+class Weibull_SDE(SDE):
+
+    def __init__(self, shape, scale, ac, x0) -> None:
+        self.shape, self.scale, self.ac = shape, scale, ac
+        f = lambda t, x: - self.ac * (x - self.scale * gamma(1 + 1/shape))
+        b1 = lambda x: 2 * self.ac * scale**(shape + 1) / shape**2 * x**(1 - shape)
+        b2 = lambda x: shape * np.exp((x / scale)**shape) * gammainc(1 + 1/shape, (x / scale)**shape) - gamma(1 / shape)
+        g = lambda t, x: np.sqrt(b1(x) * b2(x))
+        super().__init__(f, g, x0)

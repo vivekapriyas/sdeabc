@@ -1,6 +1,6 @@
 import numpy as np
 
-def BM(t_end = 1, M = 1, N = 10**4):
+def brownian(t_end = 1, M = 1, N = 10**4):
     """
     returns a discretized Brownian path on [0, t_end]
     """

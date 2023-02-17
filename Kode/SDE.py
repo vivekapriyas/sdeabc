@@ -2,16 +2,43 @@ import numpy as np
 from scipy.special import gamma, gammainc
 from numerics import *
 
+class Coefficient(object):
+    """
+    drift and diffusion coefficients of sde
+    """
+    def __init__(self) -> None:
+        pass
+    
+    def y(self, t, x):
+        """
+        returns coefficient value at (t,x)
+        """
+        raise NotImplementedError
+
+
 class SDE(object):
-    def __init__(self, f, g, x0) -> None:
+    def __init__(self, f: Coefficient, g: Coefficient, x0) -> None:
         self.f = f
         self.g = g
         self.x0 = x0
         pass
 
-    def exact_solution(self):
-        raise NotImplementedError
+
+class Linear_drift(Coefficient):
+    """
+    y(t,x) = a*x
+    """
+    def __init__(self, a) -> None:
+        self.a = a
+        self.f = lambda t, x: self.a * x
+        super().__init__()
     
+    def y(self, t, x):
+        return self.f(t, x)
+    
+    def set_par(self, a):
+        self.a = a
+        return
 
 
 class Linear_SDE(SDE):
@@ -20,8 +47,8 @@ class Linear_SDE(SDE):
     '''
     def __init__(self, x0, mu = 1, sigma = 0.5):       
         self.mu, self.sigma = mu, sigma
-        f = lambda t, x : mu * x 
-        g = lambda t, x : sigma * x
+        f = Linear_drift(mu)
+        g = Linear_drift(sigma)
         self.L1g = lambda t, x: sigma**2 * x
         self.eq = f'dXt = {self.mu}Xdt + {self.sigma}XdW'
         super().__init__(f, g, x0)

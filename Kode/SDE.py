@@ -1,91 +1,86 @@
 import numpy as np
-from scipy.special import gamma, gammainc
-from numerics import *
+from numerics import brownian
 
-class Coefficient(object):
-    """
-    drift and diffusion coefficients of sde
-    """
-    def __init__(self) -> None:
-        pass
-    
-    def y(self, t, x):
-        """
-        returns coefficient value at (t,x)
-        """
+class SDE:
+    def __init__(self, x0, **parameters) -> None:
+        self.x0 = x0
+        
+    def drift(self, t, x) -> float: 
         raise NotImplementedError
 
+    def diffusion(self, t, x) -> float:
+        raise NotImplementedError
 
-class SDE(object):
-    def __init__(self, f: Coefficient, g: Coefficient, x0) -> None:
-        self.f = f
-        self.g = g
-        self.x0 = x0
-        pass
-
-
-class Linear_drift(Coefficient):
-    """
-    y(t,x) = a*x
-    """
-    def __init__(self, a) -> None:
-        self.a = a
-        self.f = lambda t, x: self.a * x
-        super().__init__()
+    def update_parameters(self, **parameters) -> None:
+        raise NotImplementedError
     
-    def y(self, t, x):
-        return self.f(t, x)
+    def get_parameters(self):
+        raise NotImplementedError
     
-    def set_par(self, a):
-        self.a = a
+    def euler_maruyama(self, t, x, dt, dW):
+        """
+        returns one euler-maruyama step
+        """
+        return x + self.drift(t, x) * dt + self.diffusion(t, x) * dW 
+
+    def implicit_milstein(self, t, x, dt, dW):
+        raise NotImplementedError
+    
+    def num_solver(self, t, W):
+        """
+        returns numerical solution of SDE Y on [0, t_end]
+        """
+        N, M = np.shape(W)
+        X = np.zeros((N, M))
+        dt = t[1]-t[0]
+        
+        X[0,:] = self.x0
+        for n in range(N-1):
+            dW = W[n + 1,:] - W[n,:]
+            X[n + 1,:] = self.implicit_milstein(t[n], X[n,:], dt, dW)
+        return X
+    
+    def simulate(self, parameters = None):
+        t, W = brownian(t_end = 1, N = 10**8)
+        if parameters is not None:
+            self.update_parameters(parameters)
+        X = self.num_solver(t, W)
+        return X
+
+class MeanRevertingSDE(SDE):
+    def __init__(self, x0, kappa, theta, epsilon) -> None:
+        self.kappa, self.theta, self.epsilon = kappa, theta, epsilon
+        super().__init__(x0)
+        return
+    
+    def get_parameters(self):
+        return self.kappa, self.theta, self.epsilon
+    
+    def update_parameters(self, kappa, theta, epsilon) -> None:
+        self.kappa, self.theta, self.epsilon = kappa, theta, epsilon
         return
 
-
-class Linear_SDE(SDE):
-    '''
-    dX = (mu * X)dt + (sigma * X)dB
-    '''
-    def __init__(self, x0, mu = 1, sigma = 0.5):       
-        self.mu, self.sigma = mu, sigma
-        f = Linear_drift(mu)
-        g = Linear_drift(sigma)
-        self.L1g = lambda t, x: sigma**2 * x
-        self.eq = f'dXt = {self.mu}Xdt + {self.sigma}XdW'
-        super().__init__(f, g, x0)
-        
-    def exact_solution(self, t, W):
-        mu = self.mu
-        sigma = self.sigma
-        x0 = self.x0
-        M = W.shape[1] 
-        t_ext = np.outer(t, np.ones(M))
-        a = (mu - 0.5 * sigma**2) * t_ext + sigma * W
-        ex = np.exp(a) * x0
-        return ex
+    def drift(self, t, x) -> float:
+        kappa, theta, epsilon = self.get_parameters()
+        return kappa * (theta - x)
     
-    def expectation(self, t):
-        mu, x0 = self.mu, self.x0        
-        return x0 * np.exp(mu * t)
+    def diffusion(self, t, x) -> float:
+        kappa, theta, epsilon = self.get_parameters()
+        return epsilon * np.sqrt(x)
+
+    def implicit_milstein(self, t, x, dt, dW):
+        kappa, theta, epsilon = self.get_parameters()
+        N = x + kappa * theta * dt + epsilon * x**(1/2) * dW + .25 * epsilon**2 * (dW**2 - dt)
+        D = 1 + kappa * dt
+        return  N / D
+
+class GammaSDE(MeanRevertingSDE):
+    def __init__(self, x0, parameters) -> None:
+        assert parameters.shape == (3,), 'GammaSDE requires 3 parameters'
+        alpha, a, b = parameters
+        super().__init__(x0 = x0, kappa = alpha, theta = a * b, epsilon = (2 * alpha * b)**(1/2))
     
-
-class Gamma_SDE(SDE):
-    """
-    SDE with two parameter Gamma stationary distribution (shape, scale)
-    and exponentially decaying autocorrelation c(l) = e^-ac*l
-    """
-    def __init__(self, shape, scale, ac, x0) -> None:
-        self.shape, self.scale, self.ac = shape, scale, ac
-        f = lambda t, x: - self.ac * (x - self.shape * self.scale)
-        g = lambda t, x: np.sqrt(2 * self.ac * self.scale * x)
-        super().__init__(f, g, x0)
-
-
-class Weibull_SDE(SDE):
-
-    def __init__(self, shape, scale, ac, x0) -> None:
-        self.shape, self.scale, self.ac = shape, scale, ac
-        f = lambda t, x: - self.ac * (x - self.scale * gamma(1 + 1/shape))
-        b1 = lambda x: 2 * self.ac * scale**(shape + 1) / shape**2 * x**(1 - shape)
-        b2 = lambda x: shape * np.exp((x / scale)**shape) * gammainc(1 + 1/shape, (x / scale)**shape) - gamma(1 / shape)
-        g = lambda t, x: np.sqrt(b1(x) * b2(x))
-        super().__init__(f, g, x0)
+    def update_parameters(self, parameters) -> None:
+        assert parameters.shape == (3,), 'GammaSDE requires 3 parameters'
+        alpha, a, b = parameters
+        return super().update_parameters(kappa = alpha, theta = a * b, epsilon = (2 * alpha * b)**(1/2))

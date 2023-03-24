@@ -7,20 +7,17 @@ def col_from_excel(df, col, round_freq = "S"):
 
     """Convert a column of a DataFrame from Excel1904 dates to DateTime.
     Input:
-
         df: DataFrame with an index in Excel1904 format
-
         round_freq: Frequency to round to, for example S for nearest second.
     
     Output:
-
         Index converted to DateTimeIndex format
     """
 
     return pd.DatetimeIndex([from_excel(x, epoch = CALENDAR_MAC_1904) for x in df[col]]).round("S")
 
 
-def load(fpath = 'Kode\wind.dat2', nullspeeds = False):
+def load(fpath = 'wind.dat2', nullspeeds = False):
     """"
     reads in data from forcing.dat2
     converts cartesian wind components to direction and speed
@@ -37,4 +34,3 @@ def load(fpath = 'Kode\wind.dat2', nullspeeds = False):
     if not nullspeeds:
         df = df.loc[df.w != 0]
     return df
-

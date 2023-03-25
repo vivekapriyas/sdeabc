@@ -6,10 +6,10 @@ import stats
 def likelihood_free_mh(x, tol, N = 100):
     Sx = stats.stationary_statistics(x)
     q = RandomWalk()
-    x0 = None
+    x0 = x[0]
     prior = None
-    theta = np.zeros(N)
-    theta[0] = prior
+    theta0 = prior
+    theta = np.zeros((N, len(theta0)))
     M = sde.GammaSDE(x0 = x0, parameters = theta)
 
     for n in N:

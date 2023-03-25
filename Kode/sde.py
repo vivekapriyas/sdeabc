@@ -41,7 +41,7 @@ class SDE:
         return X
     
     def simulate(self, parameters = None):
-        t, W = brownian(t_end = 1, N = 10**8)
+        t, W = brownian(t_end = 1, M = 10**3, N = 10**5)
         if parameters is not None:
             self.update_parameters(parameters)
         X = self.num_solver(t, W)

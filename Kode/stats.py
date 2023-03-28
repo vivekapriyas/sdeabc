@@ -1,4 +1,4 @@
 import numpy as np
 
 def stationary_statistics(X):
-    return np.mean(X), np.var(X), np.cov(X[:1])
+    return np.array([np.mean(X), np.var(X), np.corrcoef(X[:2])])

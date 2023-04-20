@@ -40,8 +40,8 @@ class SDE:
             X[n + 1,:] = self.implicit_milstein(t[n], X[n,:], dt, dW)
         return X
     
-    def simulate(self, parameters = None, burn_in = 2 * 20):
-        M, N = 10**3, 10**5
+    def simulate(self, M = 10**3, N = 10**5,parameters = None, burn_in = 2 * 20):
+        M, N = M, N
         t, W = brownian(t_end = 1, M = M, N = N)
         assert burn_in <= M*N, 'too long burn_in'
         if parameters is not None:

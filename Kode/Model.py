@@ -51,7 +51,8 @@ class GammaSDEPrior(Model):
         return np.array([alpha, shape, scale])
 
 class GammaSDE(Model):
-    k = 6 * 24 * 365 * 6 + 2
+    burn_in = 5 * 10**4
+    k = 6 * 24 * 365 * 6 + 2 + burn_in
     def __init__(self, x0) -> None:
         self.x0 = x0
         super().__init__()
@@ -66,7 +67,7 @@ class GammaSDE(Model):
         X[0,:] = self.x0
         for n in range(N-1):
             X[n + 1,:] = self.implicit_milstein(t[n], X[n,:], dt, dW[n,:], input_values)
-        return np.ravel(X, order = 'F')[:self.k] 
+        return np.ravel(X, order = 'F')[self.burn_in:self.k] 
 
     def implicit_milstein(self, t, x, dt, dW, input_values):
         """

@@ -16,7 +16,26 @@ d = Distance.EuclidianDistance()
 theta = np.array([[0.25], [2.1], [1.4]])
 y = m.simulate(parameters = theta, n = 1)
 
-scheme = sampler.RejectionSampler(y = y, prior = prior, m = m, s = stat, distance = d)
+n = y.shape[1]
+e = np.array([np.mean(y[:,:i]) for i in range(1, n)])
+v = np.array([np.var(y[:,:i]) for i in range(1, n)])
+t = np.arange(0, n - 1)
+
+m_fig, m_ax = plt.subplots(figsize = (8, 7))
+m_ax.plot(t, e)
+m_ax.grid()
+m_ax.set_xlabel('N')
+m_ax.set_ylabel(r'Mean($X_{1:N}$)')
+m_fig.savefig('Figurer/gsde_mean_values.png')
+
+m_fig, m_ax = plt.subplots(figsize = (8, 7))
+m_ax.plot(t, v)
+m_ax.grid()
+m_ax.set_xlabel('N')
+m_ax.set_ylabel(r'Var($X_{1:N}$)')
+m_fig.savefig('Figurer/gsde_var_values.png')
+
+"""scheme = sampler.RejectionSampler(y = y, prior = prior, m = m, s = stat, distance = d)
 result = scheme.posterior(n = 10**5, quant = 0.001)
 par = result['distribution']
 print(result['tolerance'])
@@ -37,4 +56,4 @@ ax[2].hist(
     par[2], 
     bins = 25,
     density = True)
-plt.savefig('SDE_RS_test2004.png')
+plt.savefig('SDE_RS_test2004.png')"""

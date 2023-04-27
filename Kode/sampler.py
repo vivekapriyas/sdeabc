@@ -46,13 +46,13 @@ class MCMCSampler(Sampler):
         theta = np.zeros((self.q.get_dim(), n))
         theta[:,0] = self.prior.simulate(n = 1) #OBS: implentere ulike første trekk? evt begynne med rejection sampler
         for i in range(n):
-            theta[:, i + 1] = self.q.step(theta[:,i])
-            z = self.model.simulate(parameters = theta[i + 1], n = 1)
+            proposal = self.q.step(theta[:,i])
+            z = self.model.simulate(parameters = proposal, n = 1)
             sz = self.s.statistic(z)
             d = self.distance.dist(sz, s0)
             if d < tolerance:
-                ratio = self.q.pdf()
+                ratio = self.q.pdf(x = proposal, y = theta[:,i]) / self.q.pdf(x = theta[:,i], y = proposal)
+                u = np.random.uniform(self.q.get_dim())
                 pass
 
         return super().posterior()
-    

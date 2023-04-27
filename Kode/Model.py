@@ -5,7 +5,10 @@ class Model:
         pass
 
     def simulate(self) -> np.array:
-        pass
+        raise NotImplementedError
+
+    def pdf(self, x) -> np.array:
+        raise NotImplementedError
 
 class MA2coeff(Model):
     def __init__(self) -> None:

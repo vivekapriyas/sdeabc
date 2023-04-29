@@ -1,4 +1,5 @@
 import numpy as np
+import SDE
 
 class Model:
     def __init__(self) -> None:
@@ -43,47 +44,29 @@ class MA2(Model):
         z = np.array([u[j,2:] + parameters[0, j]*u[j,1:-1] + parameters[1, j]*u[j,:-2] for j in range(n)])
         return z
 
-class GammaSDEPrior(Model):
-    def __init__(self) -> None:
-        super().__init__()
+class GSDE(SDE.SDE, Model):
+    def __init__(self, x0: float, T: int) -> None:
+        self.T = T
+        super().__init__(x0)
+
+    def set_parameters(self, parameters: np.array) -> None:
+        assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
+        alpha, self.lam1, self.lam2 = parameters
+        self.alpha = alpha * self.T
+
+    def get_parameters(self) -> tuple:
+        return self.alpha, self.lam1, self.lam2
+
+    def implicit_milstein(self, x: np.array, dt: float, dW: float) -> np.array:
+        alpha, lam1, lam2 = self.get_parameters()
+        Nx = x + alpha * lam1 * lam2 * dt + (2 * alpha * lam2 * x)**(1/2) * dW + .5 * alpha * lam2 * (dW**2 - dt)
+        Dx = 1 + alpha * dt
+        return Nx / Dx
     
-    def simulate(self, n = 100) -> np.array:
-        alpha = np.random.uniform(0, 0.5, size = n)
-        shape = np.random.uniform(1, 3, size = n)
-        scale = np.random.uniform(0, 2, size = n)
-        return np.array([alpha, shape, scale])
+    def simulate(self, parameters: np.array, Nsim = 1) -> np.array:
+        results = []
+        for i in range(Nsim):
+            self.set_parameters(parameters[:, i])
+            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in = 5 * 10**4)) #NB: vurder valgte verdier
+        return np.array(results)
 
-class GammaSDE(Model):
-    burn_in = 5 * 10**4
-    k = 6 * 24 * 365 * 6 + 2 + burn_in
-    def __init__(self, x0) -> None:
-        self.x0 = x0
-        super().__init__()
-
-    def num_solver(self, input_values):
-        M = 10**2
-        N = -(- self.k // M)
-        t = np.linspace(0, 1, N + 1) #skalert til [0, 1]
-        dt = 1 / (N + 1)
-        dW = np.sqrt(dt) * np.random.randn(N, M)
-        X = np.zeros((N, M))
-        X[0,:] = self.x0
-        for n in range(N-1):
-            X[n + 1,:] = self.implicit_milstein(t[n], X[n,:], dt, dW[n,:], input_values)
-        return np.ravel(X, order = 'F')[self.burn_in:self.k] 
-
-    def implicit_milstein(self, t, x, dt, dW, input_values):
-        """
-        returns one implicit milstein step
-        """
-        if not all([val > 0 for val in x]):
-            raise ValueError('Non-positive value {} at step {}'.format(str(x), str(t * self.k)))
-        alpha, shape, scale = input_values
-        alpha_hat = alpha * self.k
-        theta, epsilon = shape * scale, np.sqrt(2 * alpha_hat * scale)
-        Nx = x + alpha_hat * theta * dt + epsilon * x**(1/2) * dW + .25 * epsilon**2 * (dW**2 - dt)
-        Dx = 1 + alpha_hat * dt
-        return  Nx / Dx
-    
-    def simulate(self, parameters, n = 100) -> np.array:
-        return np.array([self.num_solver(parameters[:,i]) for i in range(n)])

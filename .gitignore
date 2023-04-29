@@ -1,4 +1,8 @@
 .venv/*
 Kode/__pycache__/*
 testing.py
+<<<<<<< HEAD
 res.py
+=======
+res.py
+>>>>>>> 480384b41e14700acacbda1704dc0b1436204617

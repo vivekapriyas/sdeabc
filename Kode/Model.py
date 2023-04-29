@@ -45,14 +45,14 @@ class MA2(Model):
         return z
 
 class GSDE(SDE.SDE, Model):
-    def __init__(self, x0: float, T: int) -> None:
-        self.T = T
+    def __init__(self, x0: float, t: int) -> None:
+        self.t = t
         super().__init__(x0)
 
     def set_parameters(self, parameters: np.array) -> None:
         assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
         alpha, self.lam1, self.lam2 = parameters
-        self.alpha = alpha * self.T
+        self.alpha = alpha * self.t
 
     def get_parameters(self) -> tuple:
         return self.alpha, self.lam1, self.lam2

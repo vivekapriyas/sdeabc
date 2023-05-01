@@ -5,7 +5,7 @@ class Model:
     def __init__(self) -> None:
         pass
 
-    def simulate(self) -> np.array:
+    def simulate(self, Nsim) -> np.array:
         raise NotImplementedError
 
     def pdf(self, x) -> np.array:
@@ -15,13 +15,13 @@ class MA2coeff(Model):
     def __init__(self) -> None:
         super().__init__()
 
-    def simulate(self, n = 100) -> np.array:
+    def simulate(self, Nsim = 100) -> np.array:
         """
         uniformly samples n coefficient-pairs from admissable domain by rejection sampling
         """
         i = 0
-        theta = np.zeros((2, n))
-        while i < n:
+        theta = np.zeros((2, Nsim))
+        while i < Nsim:
             x = np.random.uniform(low = -2, high = 2, size = 1)
             y = np.random.uniform(low = -1, high = 1, size = 1)
             if (x + y > -1) and (x - y < 1):
@@ -34,25 +34,35 @@ class MA2(Model):
     def __init__(self) -> None:
         super().__init__()
 
-    def simulate(self, parameters: np.array, k = 100, n = 100) -> np.array:
+    def simulate(self, parameters: np.array, k = 100, Nsim = 100) -> np.array:
         """
         returns n MA(2) sequences of length k
         coeff: 2 x n array
         z: n x k array
         """
-        u = np.random.randn(n, self.q + k)
-        z = np.array([u[j,2:] + parameters[0, j]*u[j,1:-1] + parameters[1, j]*u[j,:-2] for j in range(n)])
+        u = np.random.randn(Nsim, self.q + k)
+        z = np.array([u[j,2:] + parameters[0, j]*u[j,1:-1] + parameters[1, j]*u[j,:-2] for j in range(Nsim)])
         return z
+    
+class GSDE_constvar_prior(Model):
+    def __init__(self, alpha: float, lam2: float) -> None:
+        self.alpha, self.lam2 = alpha, lam2
+        super().__init__()
+
+    def simulate(self, Nsim = 100) -> np.array:
+        alpha, lam2 = [self.alpha] * Nsim, [self.lam2] * Nsim
+        lam1 = np.random.uniform(low = 2, high = 6, size = Nsim)
+        return np.array([alpha, lam1, lam2])
 
 class GSDE(SDE.SDE, Model):
-    def __init__(self, x0: float, T: int) -> None:
-        self.T = T
+    def __init__(self, x0: float, t: int) -> None:
+        self.t = t
         super().__init__(x0)
 
     def set_parameters(self, parameters: np.array) -> None:
         assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
         alpha, self.lam1, self.lam2 = parameters
-        self.alpha = alpha * self.T
+        self.alpha = alpha * self.t
 
     def get_parameters(self) -> tuple:
         return self.alpha, self.lam1, self.lam2
@@ -69,4 +79,3 @@ class GSDE(SDE.SDE, Model):
             self.set_parameters(parameters[:, i])
             results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in = 5 * 10**4)) #NB: vurder valgte verdier
         return np.array(results)
-

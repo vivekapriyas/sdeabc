@@ -43,6 +43,14 @@ class MA2(Model):
         u = np.random.randn(n, self.q + k)
         z = np.array([u[j,2:] + parameters[0, j]*u[j,1:-1] + parameters[1, j]*u[j,:-2] for j in range(n)])
         return z
+    
+class GSDE_constvar_prior(Model):
+    def __init__(self, alpha, lam2) -> None:
+        self.alpha, self.lam2 = alpha, lam2
+        super().__init__()
+
+    def simulate(self) -> np.array:
+        return super().simulate()
 
 class GSDE(SDE.SDE, Model):
     def __init__(self, x0: float, t: int) -> None:

@@ -20,20 +20,28 @@ class RejectionSampler(Sampler):
     def __init__(self, y: np.array, prior: Model, m: Model, s: Statistic, distance: Distance) -> None:
         super().__init__(y, prior, m, s, distance)
 
-    def posterior(self, n = 10**6, quant = 0.001) -> dict:
+    def posterior(self, Nsim = 10**6, quant = 0.001, splits = None) -> dict:
         """
         returns approximate posterior + information
         given quantile of n samples are returned
         """
+        if splits is not None:
+            Nsim = abs( -Nsim // splits)
+        else:
+            splits = 1
+            
+        d = self.prior.get_dim()
         s0 = self.s.statistic(self.obs)
-        proposals = self.prior.simulate(n = n)
-        z = self.model.simulate(parameters = proposals, n = n)
-        sz = self.s.statistic(z) 
-        d = self.distance.dist(sz, s0)
-        qval = np.quantile(d, q = quant)
-        i = np.where(d < qval)[0]
-        par = proposals[:, i]
-        return {'distribution' : par, 'tolerance' : qval}
+        post = np.zeros((d, 0))
+        for i in splits:
+            proposals = self.prior.simulate(Nsim = Nsim)
+            z = self.model.simulate(parameters = proposals, Nsim = Nsim)
+            sz = self.s.statistic(z) 
+            d = self.distance.dist(sz, s0)
+            qval = np.quantile(d, q = quant)
+            id = np.where(d < qval)[0]
+            post = np.concatenate((post, proposals[:, id]), axis = 1)
+        return {'distribution' : post, 'tolerance' : qval}
 
 
 class MCMCSampler(Sampler):

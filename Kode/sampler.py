@@ -29,11 +29,11 @@ class RejectionSampler(Sampler):
             Nsim = abs( -Nsim // splits)
         else:
             splits = 1
-            
+
         d = self.prior.get_dim()
         s0 = self.s.statistic(self.obs)
         post = np.zeros((d, 0))
-        for i in splits:
+        for i in range(splits):
             proposals = self.prior.simulate(Nsim = Nsim)
             z = self.model.simulate(parameters = proposals, Nsim = Nsim)
             sz = self.s.statistic(z) 

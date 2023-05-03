@@ -16,7 +16,7 @@ class Sampler:
     def posterior(self) -> dict:
         raise NotImplementedError
     
-    def verbosity(self, verbose: bool) -> function:
+    def verbosity(self, verbose: bool):
         if verbose:
             def verboseprint(*args):
                 for arg in args:

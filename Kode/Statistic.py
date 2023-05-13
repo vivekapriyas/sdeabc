@@ -9,6 +9,9 @@ class Statistic:
     def statistic(self, x) -> np.array:
         raise NotImplementedError
 
+    def get_dim(self) -> int:
+        raise NotImplementedError
+
 class Autocov(Statistic):
     """
     first q autocovariances
@@ -16,6 +19,9 @@ class Autocov(Statistic):
     def __init__(self, q = 2) -> None:
         self.q = q
         super().__init__()
+    
+    def get_dim(self) -> int:
+        return self.q
     
     def statistic(self, x: np.array) -> np.array:
         """
@@ -27,6 +33,9 @@ class Autocov(Statistic):
 class StationaryStats(Statistic):
     def __init__(self) -> None:
         super().__init__()
+
+    def get_dim(self) -> int:
+        return 3
 
     def statistic(self, x: np.array) -> np.array:
         """

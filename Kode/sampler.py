@@ -6,12 +6,11 @@ import Distance
 import Kernel
 
 class Sampler:
-    def __init__(self, y: np.array, prior: Model, m: Model, s: Statistic, distance: Distance) -> None:
-        self.obs = y
+    def __init__(self, obs: np.array, prior: Model, m: Model, s: Statistic) -> None:
+        self.obs = obs
         self.prior = prior
         self.model = m
         self.s = s
-        self.distance = distance
 
     def posterior(self) -> dict:
         raise NotImplementedError
@@ -26,9 +25,11 @@ class Sampler:
             verboseprint = lambda *args: None
         return verboseprint
 
+
 class RejectionSampler(Sampler):
-    def __init__(self, y: np.array, prior: Model, m: Model, s: Statistic, distance: Distance) -> None:
-        super().__init__(y, prior, m, s, distance)
+    def __init__(self, obs: np.array, prior: Model, m: Model, s: Statistic, distance: Distance) -> None:
+        self.distance = distance
+        super().__init__(obs, prior, m, s, distance)
 
     def posterior(self, Nsim = 10**6, quant = 0.001, splits = None, verbose = False) -> dict:
         """
@@ -58,22 +59,35 @@ class RejectionSampler(Sampler):
 
 
 class MCMCSampler(Sampler):
-    def __init__(self, y: np.array, prior: Model, m: Model, s: Statistic, distance: Distance, q: Kernel) -> None:
-        self.q = q
-        super().__init__(y, prior, m, s, distance)
+    def __init__(self, obs: np.array, prior: Model, q: Model, m: Model, kernel: Model, s: Statistic) -> None:
+        self.q, self.kernel = q, kernel
+        super().__init__(obs, prior, m, s)
     
+    def first_step(self, prior: Model, m: Model, s: Statistic) -> tuple:
+        #OBS: implement different first steps?
+        theta = prior.simulate(Nsim = 1)
+        z = m.simulate(parameters = theta, Nsim = 1)
+        sz = s.statistic(z)
+        return theta, sz
+
+    def get_arrays(self, prior: Model, s: Statistic, n: int) -> tuple:
+        d1, d2 = prior.get_dim(), s.get_dim()
+        return np.zeros((d1, n)), np.zeros((d2, n))
+
     def posterior(self, tolerance, n = 10**6) -> dict:
-        s0 = self.s.statistic(self.obs)
-        theta = np.zeros((self.q.get_dim(), n))
-        theta[:,0] = self.prior.simulate(n = 1) #OBS: implentere ulike første trekk? evt begynne med rejection sampler
+        prior, q, m, kernel, s = self.prior, self.q, self.m, self.kernel, self.s 
+        s0 = s.statistic(self.obs)
+        theta, S = self.get_arrays(prior, s, n)
+        theta[0,:], S[0,:] = self.first_step(prior, m, s)
+
         for i in range(n):
-            proposal = self.q.step(theta[:,i])
-            z = self.model.simulate(parameters = proposal, n = 1)
+            proposal = self.q.simulate(theta[:,i], Nsim = 1)
+            z = self.model.simulate(parameters = proposal, Nsim = 1)
             sz = self.s.statistic(z)
-            d = self.distance.dist(sz, s0)
-            if d < tolerance:
-                ratio = self.q.pdf(x = proposal, y = theta[:,i]) / self.q.pdf(x = theta[:,i], y = proposal)
-                u = np.random.uniform(self.q.get_dim())
-                pass
+
+            N = prior.logpdf(proposal) + kernel.logpdf()
+
+            u = np.random.uniform(self.q.get_dim())
+            pass
 
         return super().posterior()

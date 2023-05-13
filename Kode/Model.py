@@ -1,5 +1,7 @@
 import numpy as np
 import SDE
+from scipy.stats import gamma, multivariate_normal as mvnr
+from matplotlib import pyplot as plt
 
 class Model:
     def __init__(self) -> None:
@@ -11,7 +13,7 @@ class Model:
     def simulate(self, Nsim) -> np.array:
         raise NotImplementedError
 
-    def pdf(self, x) -> np.array:
+    def logpdf(self, x) -> np.array:
         raise NotImplementedError
 
 class MA2coeff(Model):
@@ -54,19 +56,6 @@ class MA2(Model):
         u = np.random.randn(Nsim, self.q + k)
         z = np.array([u[j,2:] + parameters[0, j]*u[j,1:-1] + parameters[1, j]*u[j,:-2] for j in range(Nsim)])
         return z
-    
-class GSDE_constvar_prior(Model):
-    def __init__(self, alpha: float, lam2: float) -> None:
-        self.alpha, self.lam2 = alpha, lam2
-        super().__init__()
-    
-    def get_dim(self) -> int:
-        return 3
-
-    def simulate(self, Nsim = 100) -> np.array:
-        alpha, lam2 = [self.alpha] * Nsim, [self.lam2] * Nsim
-        lam1 = np.random.uniform(low = 2, high = 6, size = Nsim)
-        return np.array([alpha, lam1, lam2])
 
 class GSDE(SDE.SDE, Model):
     def __init__(self, x0: float, t: int) -> None:
@@ -74,6 +63,9 @@ class GSDE(SDE.SDE, Model):
         super().__init__(x0)
 
     def set_parameters(self, parameters: np.array) -> None:
+        """
+        parameters: 3 x 1 np.array
+        """
         assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
         alpha, self.lam1, self.lam2 = parameters
         self.alpha = alpha * self.t
@@ -88,8 +80,74 @@ class GSDE(SDE.SDE, Model):
         return Nx / Dx
     
     def simulate(self, parameters: np.array, Nsim = 1) -> np.array:
+        """
+        parameters: 3 x Nsim np.array
+        results: Nsim x k array
+        """
         results = []
         for i in range(Nsim):
             self.set_parameters(parameters[:, i])
-            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in = 5 * 10**4)) #NB: vurder valgte verdier
+            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4)) #NB: vurder valgte verdier
         return np.array(results)
+
+class Gammadist(Model):
+    def __init__(self, parameters: np.array) -> None:
+        """
+        parameters: 2 x d parameters
+        """
+        assert parameters.shape[0] == 2, 'parameters should be given as [[shape], [scale]]'
+        self.dim = parameters.shape[2]
+        self.alpha, self.beta = parameters
+    
+    def get_dim(self) -> int:
+        return self.dim
+    
+    def get_parameters(self) -> tuple:
+        """
+        alpha: (d, ) array
+        beta: (d, ) array
+        """
+        return self.alpha, self.beta
+    
+    def simulate(self, Nsim) -> np.array:
+        """
+        returns 2 x Nsim np.array
+        """
+        d = self.get_dim()
+        alpha, beta = self.get_parameters()
+        rv = gamma.rvs(a = alpha, scale =  beta, size = (Nsim, d)).ravel(order = 'F')
+        return rv.reshape(d, -1)
+    
+    def logpdf(self, x) -> np.array:
+        """
+        x : (d, ) array
+        """
+        d = self.get_dim()
+        assert x.shape[0] == d, 'pdf input must have shape[0] == {}'.format(d)
+        alpha, beta = self.get_parameters()
+        return np.sum(gamma.logpdf(x = x, a = alpha, scale = beta))
+
+class RandomWalk(Model):
+    def __init__(self, covariance: np.array) -> None:
+        self.dim = covariance.shape[0]
+        self.cov = np.diag(covariance)
+    
+    def get_dim(self) -> int:
+        return self.dim
+    
+    def get_parameters(self) -> np.array:
+        return self.cov
+    
+    def simulate(self, mu, Nsim) -> np.array:
+        """
+        returns d x Nsim np.array
+        """
+        d = self.get_dim()
+        cov = self.get_parameters()
+        rv = mvnr.rvs(mean = mu, cov = cov, size = Nsim).ravel(order = 'F')
+        return  rv.reshape(d, -1)
+    
+    def logpdf(self, x, mu) -> np.array:
+        cov = self.get_parameters()
+        return mvnr.logpdf(x = x, mean = mu, cov = cov)
+    

@@ -2,3 +2,4 @@
 Kode/__pycache__/*
 Kode/tester.py
 res.py
+*.npy 

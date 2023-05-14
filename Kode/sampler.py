@@ -68,26 +68,36 @@ class MCMCSampler(Sampler):
         theta = prior.simulate(Nsim = 1)
         z = m.simulate(parameters = theta, Nsim = 1)
         sz = s.statistic(z)
-        return theta, sz
+        return theta[:,0], sz
 
     def get_arrays(self, prior: Model, s: Statistic, n: int) -> tuple:
         d1, d2 = prior.get_dim(), s.get_dim()
         return np.zeros((d1, n)), np.zeros((d2, n))
 
-    def posterior(self, tolerance, n = 10**6) -> dict:
-        prior, q, m, kernel, s = self.prior, self.q, self.m, self.kernel, self.s 
+    def posterior(self, n = 10**6, verbose = False) -> dict:
+        verboseprint = self.verbosity(verbose)
+        prior, q, m, kernel, s = self.prior, self.q, self.model, self.kernel, self.s 
         s0 = s.statistic(self.obs)
         theta, S = self.get_arrays(prior, s, n)
-        theta[0,:], S[0,:] = self.first_step(prior, m, s)
+        theta[:, 0], S[:, 0] = self.first_step(prior, m, s)
 
-        for i in range(n):
-            proposal = self.q.simulate(theta[:,i], Nsim = 1)
+        for i in range(n - 1):
+            verboseprint('{}%'.format((i + 1 )/n * 100))
+            proposal = self.q.simulate(theta[:, i], Nsim = 1)
             z = self.model.simulate(parameters = proposal, Nsim = 1)
             sz = self.s.statistic(z)
 
-            N = prior.logpdf(proposal) + kernel.logpdf()
+            N = prior.logpdf(proposal) + kernel.logpdf(x = sz, mu = s0)
+            D = prior.logpdf(theta[:, i]) + kernel.logpdf(x = S[:, i], mu = s0)
+            
+            a, u = 1, 0
+            if N - D <= 0:
+                a = np.exp(N - D)
+                u = np.random.uniform(1)
+            if u <= a:
+                theta[:, i + 1], S[:, i + 1] = proposal[:,0], sz
+            else:
+                theta[:, i + 1], S[:, i + 1] = theta[:, i], S[:, i]
 
-            u = np.random.uniform(self.q.get_dim())
-            pass
+        return {'distribution' : theta, 'statistics': S}
 
-        return super().posterior()

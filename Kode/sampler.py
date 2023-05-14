@@ -3,7 +3,6 @@ from matplotlib import pyplot as plt
 import Model
 import Statistic
 import Distance
-import Kernel
 
 class Sampler:
     def __init__(self, obs: np.array, prior: Model, m: Model, s: Statistic) -> None:

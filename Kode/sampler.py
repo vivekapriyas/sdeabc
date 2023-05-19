@@ -79,6 +79,7 @@ class MCMCSampler(Sampler):
         s0 = s.statistic(self.obs)
         theta, S = self.get_arrays(prior, s, n)
         theta[:, 0], S[:, 0] = self.first_step(prior, m, s)
+        accepted = 0
 
         for i in range(n - 1):
             verboseprint('{}%'.format((i + 1 )/n * 100))
@@ -95,8 +96,9 @@ class MCMCSampler(Sampler):
                 u = np.random.uniform(1)
             if u <= a:
                 theta[:, i + 1], S[:, i + 1] = proposal[:,0], sz
+                accepted += 1
             else:
                 theta[:, i + 1], S[:, i + 1] = theta[:, i], S[:, i]
 
-        return {'distribution' : theta, 'statistics': S}
+        return {'distribution' : theta, 'statistics': S, 'acceptance_ratio': accepted/n}
 

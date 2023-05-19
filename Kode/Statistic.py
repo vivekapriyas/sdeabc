@@ -43,8 +43,10 @@ class StationaryStats(Statistic):
         returns: n x 3 array
         """
         d = self.get_dim()
-        m = np.mean(x, axis = 1)
-        sd = np.std(x, axis = 1)
+        z075 = np.quantile(x, 0.25)
+        z025 = np.quantile(x, 0.75)
+        #m = np.mean(x, axis = 1)
+        #sd = np.std(x, axis = 1)
         #c = np.array([acf(i, nlags = 1)[1] for i in x])
 
-        return np.reshape(np.array([m, sd]), (d))
+        return np.reshape(np.array([z075, z025]), (d))

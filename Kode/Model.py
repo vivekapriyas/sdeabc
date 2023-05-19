@@ -113,7 +113,7 @@ class GSDE(SDE.SDE, Model):
         Dx = 1 + alpha * dt
         return Nx / Dx
     
-    def simulate(self, parameters: np.array, Nsim = 1, timed = False) -> np.array:
+    def simulate(self, parameters: np.array, Nsim = 1, timed = False, correlated_solutions = False) -> np.array:
         """
         parameters: 3 x Nsim np.array
         results: Nsim x k array
@@ -122,7 +122,7 @@ class GSDE(SDE.SDE, Model):
         results = []
         for i in range(Nsim):
             self.set_parameters(parameters[:, i])
-            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4)) #NB: vurder valgte verdier
+            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4, correlated_solutions = correlated_solutions)) #NB: vurder valgte verdier
         get_time()
         return np.array(results)
 
@@ -157,12 +157,11 @@ class Gammadist(Model):
     
     def logpdf(self, x) -> np.array:
         """
+        NB only for use in mcmc ratio rn
         x : (d, ) array
         """
-        d = self.get_dim()
-        assert x.shape[0] == d, 'pdf input must have shape[0] == {}'.format(d)
         alpha, beta = self.get_parameters()
-        return np.sum(gamma.logpdf(x = x, a = alpha, scale = beta))
+        return np.prod((alpha - 1) * np.log(x) - (x / beta))
 
 
 class RandomWalk(Model):

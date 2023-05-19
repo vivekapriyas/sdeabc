@@ -113,7 +113,7 @@ class GSDE(SDE.SDE, Model):
         Dx = 1 + alpha * dt
         return Nx / Dx
     
-    def simulate(self, parameters: np.array, Nsim = 1, timed = False) -> np.array:
+    def simulate(self, parameters: np.array, Nsim = 1, timed = False, correlated_solutions = False) -> np.array:
         """
         parameters: 3 x Nsim np.array
         results: Nsim x k array
@@ -122,7 +122,7 @@ class GSDE(SDE.SDE, Model):
         results = []
         for i in range(Nsim):
             self.set_parameters(parameters[:, i])
-            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4)) #NB: vurder valgte verdier
+            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4, correlated_solutions = correlated_solutions)) #NB: vurder valgte verdier
         get_time()
         return np.array(results)
 

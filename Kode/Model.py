@@ -157,12 +157,11 @@ class Gammadist(Model):
     
     def logpdf(self, x) -> np.array:
         """
+        NB only for use in mcmc ratio rn
         x : (d, ) array
         """
-        d = self.get_dim()
-        assert x.shape[0] == d, 'pdf input must have shape[0] == {}'.format(d)
         alpha, beta = self.get_parameters()
-        return np.sum(gamma.logpdf(x = x, a = alpha, scale = beta))
+        return np.prod((alpha - 1) * np.log(x) - (x / beta))
 
 
 class RandomWalk(Model):

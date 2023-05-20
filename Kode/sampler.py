@@ -62,23 +62,25 @@ class MCMCSampler(Sampler):
         self.q, self.kernel = q, kernel
         super().__init__(obs, prior, m, s)
     
-    def first_step(self, prior: Model, m: Model, s: Statistic) -> tuple:
+    def first_step(self, prior: Model, m: Model, s: Statistic, theta) -> tuple:
         #OBS: implement different first steps?
-        theta = prior.simulate(Nsim = 1)
+        if theta is None:
+            theta = prior.simulate(Nsim = 1)
         z = m.simulate(parameters = theta, Nsim = 1)
         sz = s.statistic(z)
         return theta[:,0], sz
-
+    
     def get_arrays(self, prior: Model, s: Statistic, n: int) -> tuple:
         d1, d2 = prior.get_dim(), s.get_dim()
         return np.zeros((d1, n)), np.zeros((d2, n))
-
-    def posterior(self, n = 10**6, verbose = False) -> dict:
+    
+    def posterior(self, n = 10**6, verbose = False, first_step = None) -> dict:
         verboseprint = self.verbosity(verbose)
         prior, q, m, kernel, s = self.prior, self.q, self.model, self.kernel, self.s 
         s0 = s.statistic(self.obs)
         theta, S = self.get_arrays(prior, s, n)
-        theta[:, 0], S[:, 0] = self.first_step(prior, m, s)
+
+        theta[:, 0], S[:, 0] = self.first_step(prior, m, s, theta = first_step)
         accepted = 0
 
         for i in range(n - 1):
@@ -101,4 +103,15 @@ class MCMCSampler(Sampler):
                 theta[:, i + 1], S[:, i + 1] = theta[:, i], S[:, i]
 
         return {'distribution' : theta, 'statistics': S, 'acceptance_ratio': accepted/n}
-
+    
+    def adaptive_posterior(self, covs: np.array, n = 10**6, verbose = False) -> dict:
+        results = self.posterior(n = n, verbose = verbose)
+        acceptances = []
+        for cov in covs:
+            self.kernel.set_parameters(cov)
+            temp = self.posterior(n = n, verbose = verbose)
+            results['distribution'] = np.hstack((results['distribution'], temp['distribution']))
+            results['distribution'] = np.hstack((results['distribution'], temp['distribution']))
+            acceptances.append(temp['acceptance_ratio'])
+        results['acceptance_ratio'] = np.array(acceptances)
+        return results

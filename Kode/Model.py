@@ -169,6 +169,10 @@ class RandomWalk(Model):
         self.dim = covariance.shape[0]
         self.cov = np.diag(covariance)
     
+    def set_parameters(self, covariance: np.array) -> None:
+        assert covariance.shape[0] == self.get_dim(), 'new covariance matrix must have same dimensions as previous'
+        self.cov = covariance
+
     def get_dim(self) -> int:
         return self.dim
     

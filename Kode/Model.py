@@ -157,12 +157,11 @@ class Gammadist(Model):
     
     def logpdf(self, x) -> np.array:
         """
+        NB only for use in mcmc ratio rn
         x : (d, ) array
         """
-        d = self.get_dim()
-        assert x.shape[0] == d, 'pdf input must have shape[0] == {}'.format(d)
-        alpha, beta = self.get_parameters()
-        return np.sum(gamma.logpdf(x = x, a = alpha, scale = beta))
+        a, b = self.get_parameters()
+        return np.sum((a - 1) * np.log(x) - (x / b))
 
 
 class RandomWalk(Model):
@@ -170,6 +169,10 @@ class RandomWalk(Model):
         self.dim = covariance.shape[0]
         self.cov = np.diag(covariance)
     
+    def set_parameters(self, covariance):
+        assert self.get_dim() == covariance.shape[0], 'new covariance structure must have same dimensions as previous'
+        self.cov = covariance
+        
     def get_dim(self) -> int:
         return self.dim
     

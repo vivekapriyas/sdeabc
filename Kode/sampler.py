@@ -28,7 +28,7 @@ class Sampler:
 class RejectionSampler(Sampler):
     def __init__(self, obs: np.array, prior: Model, m: Model, s: Statistic, distance: Distance) -> None:
         self.distance = distance
-        super().__init__(obs, prior, m, s, distance)
+        super().__init__(obs, prior, m, s)
 
     def posterior(self, Nsim = 10**6, quant = 0.001, splits = None, verbose = False) -> dict:
         """
@@ -80,20 +80,26 @@ class MCMCSampler(Sampler):
         theta, S = self.get_arrays(prior, s, n)
         theta[:, 0], S[:, 0] = self.first_step(prior, m, s)
         accepted = 0
-
+        print('S0', s0)
         for i in range(n - 1):
             verboseprint('{}%'.format((i + 1 )/n * 100))
             proposal = self.q.simulate(theta[:, i], Nsim = 1)
             z = self.model.simulate(parameters = proposal, Nsim = 1)
             sz = self.s.statistic(z)
 
-            N = prior.logpdf(proposal) + kernel.logpdf(x = sz, mu = s0)
+            N = prior.logpdf(proposal[:,0]) + kernel.logpdf(x = sz, mu = s0)
             D = prior.logpdf(theta[:, i]) + kernel.logpdf(x = S[:, i], mu = s0)
+            print('nåværende theta:', theta[:, i])
+            print('forslag', proposal[:,0])
             
+            print('nåværende S:', S[:, i])
+            print('forslag:', sz)
+            print('N - D', N- D)
             a, u = 1, 0
             if N - D <= 0:
                 a = np.exp(N - D)
-                u = np.random.uniform(1)
+                u = np.random.uniform(low = 0, high = 1, size = 1)
+            print('u:', u)
             if u <= a:
                 theta[:, i + 1], S[:, i + 1] = proposal[:,0], sz
                 accepted += 1
@@ -101,4 +107,3 @@ class MCMCSampler(Sampler):
                 theta[:, i + 1], S[:, i + 1] = theta[:, i], S[:, i]
 
         return {'distribution' : theta, 'statistics': S, 'acceptance_ratio': accepted/n}
-

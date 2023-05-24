@@ -1,14 +1,15 @@
 import numpy as np
 import SDE
-from scipy.stats import gamma, multivariate_normal as mvnr
+from scipy.stats import gamma, uniform, multivariate_normal as mvnr
 import time
 
 class Model:
     def __init__(self) -> None:
+        self.dim = None
         pass
 
     def get_dim(self) -> int:
-        raise NotImplementedError
+        return self.dim
 
     def simulate(self, Nsim) -> np.array:
         raise NotImplementedError
@@ -24,29 +25,46 @@ class Model:
         else:
             get_time = lambda: None
         return get_time
-    
+
+
 class JointModel(Model):
     def __init__(self, models: list) -> None:
         self.models = models
         self.dim = sum([m.get_dim() for m in models])
+        self.size = len(models)
     
     def get_dim(self) -> int:
-        return self.dim
+        return super.get_dim()
     
+    def get_models(self):
+        return self.models
+
+    def get_size(self):
+        return self.size
+
     def simulate(self, Nsim) -> np.array:
         """
         NB: mangler funksjonalitet for modeller som tar inn parametere i simulate
         """
+        models = self.models()
         simulations = []
-        for m in self.models:
+        for m in models:
             simulations.append(m.simulate(Nsim))
         return np.array(simulations)
 
     def logpdf(self, x) -> np.array:
         """
-        logpdf : summen av logpdf-ene i guess? men må få inn riktig x
+        logpdf : summen av logpdf-ene
         """
-        return super().logpdf(x)
+        size, models = self.get_size(), self.models()
+        lpdf = 0
+        dims = [0]
+        for i in range(size):
+            m = models[i]
+            dims.append(m.get_dim())
+            lpdf += m.logpdf(x[dims[i]:(dims[i] + dims[i + 1])])
+        return lpdf
+
 
 class MA2coeff(Model):
     def __init__(self) -> None:
@@ -100,9 +118,9 @@ class GSDE(SDE.SDE, Model):
         """
         parameters: 3 x 1 np.array #NB: tester med alpha == 0.25 atm
         """
-        assert parameters.shape[0] == 2, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
-        self.lam1, self.lam2 = parameters
-        self.alpha = 0.25 * self.t
+        assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
+        self.alpha, self.lam1, self.lam2 = parameters
+        self.alpha = self.alpha * self.t
 
     def get_parameters(self) -> tuple:
         return self.alpha, self.lam1, self.lam2
@@ -113,7 +131,7 @@ class GSDE(SDE.SDE, Model):
         Dx = 1 + alpha * dt
         return Nx / Dx
     
-    def simulate(self, parameters: np.array, Nsim = 1, timed = False) -> np.array:
+    def simulate(self, parameters: np.array, Nsim = 1, timed = False, correlated_solutions = False) -> np.array:
         """
         parameters: 3 x Nsim np.array
         results: Nsim x k array
@@ -122,7 +140,7 @@ class GSDE(SDE.SDE, Model):
         results = []
         for i in range(Nsim):
             self.set_parameters(parameters[:, i])
-            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4)) #NB: vurder valgte verdier
+            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4, correlated_solutions = correlated_solutions)) #NB: vurder valgte verdier
         get_time()
         return np.array(results)
 
@@ -163,12 +181,44 @@ class Gammadist(Model):
         a, b = self.get_parameters()
         return np.sum((a - 1) * np.log(x) - (x / b))
 
+    def logpdf(self, x) -> np.array:
+        low, high = self.get_parameters()
+        return uniform.logpdf(x, loc = low, scale = high)
+
+class UniformDist(Model):
+    def __init__(self, parameters: np.array) -> None:
+        """
+        parameters: 2 x d parameters
+        """
+        assert parameters.shape[0] ==  2, 'parameters should be given as [[low], [high]]'
+        self.dim = parameters.shape[1]
+        self.low, self.high = parameters
+
+    def get_dim(self) -> int:
+        return super().get_dim()
+
+    def get_parameters(self) -> tuple:
+        return self.low, self.high
+    
+    def simulate(self, Nsim) -> np.array:
+        d = self.get_dim()
+        low, high = self.get_parameters()
+        rv = uniform.rvs(loc = low, scale = high, size = (Nsim, d)).ravel(order = 'F')
+        return rv.reshape(d, -1)
+
+    def logpdf(self, x) -> np.array:
+        low, high = self.get_parameters()
+        return uniform.logpdf(x, loc = low, scale = high)
 
 class RandomWalk(Model):
     def __init__(self, covariance: np.array) -> None:
         self.dim = covariance.shape[0]
         self.cov = np.diag(covariance)
     
+    def set_parameters(self, covariance: np.array) -> None:
+        assert covariance.shape[0] == self.get_dim(), 'new covariance matrix must have same dimensions as previous'
+        self.cov = covariance
+
     def set_parameters(self, covariance):
         assert self.get_dim() == covariance.shape[0], 'new covariance structure must have same dimensions as previous'
         self.cov = covariance

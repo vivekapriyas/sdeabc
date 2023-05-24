@@ -1,5 +1,6 @@
 .venv/*
 Kode/__pycache__/*
-Kode/tester.py
+Kode/Tester/*
 res.py
 *.npy 
+.vscode/*

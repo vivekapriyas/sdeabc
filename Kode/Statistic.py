@@ -49,4 +49,4 @@ class StationaryStats(Statistic):
         sd = np.std(x, axis = 1)
         #c = np.array([acf(i, nlags = 1)[1] for i in x])
 
-        return np.reshape(np.array([m, sd]), (d))
+        return np.reshape(np.array([z075, z025]), (d))

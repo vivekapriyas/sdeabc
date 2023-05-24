@@ -118,9 +118,9 @@ class GSDE(SDE.SDE, Model):
         """
         parameters: 3 x 1 np.array #NB: tester med alpha == 0.25 atm
         """
-        assert parameters.shape[0] == 2, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
-        self.lam1, self.lam2 = parameters
-        self.alpha = 0.25 * self.t
+        assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
+        self.alpha, self.lam1, self.lam2 = parameters
+        self.alpha = self.alpha * self.t
 
     def get_parameters(self) -> tuple:
         return self.alpha, self.lam1, self.lam2

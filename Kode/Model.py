@@ -34,7 +34,7 @@ class JointModel(Model):
         self.size = len(models)
     
     def get_dim(self) -> int:
-        return super.get_dim()
+        return self.dim
     
     def get_models(self):
         return self.models
@@ -44,19 +44,20 @@ class JointModel(Model):
 
     def simulate(self, Nsim) -> np.array:
         """
-        NB: mangler funksjonalitet for modeller som tar inn parametere i simulate
+        NB: mangler funksjonalitet for modeller som tar inn parametere i simulate + kan hende det kun går for Nsim = 1
         """
-        models = self.models()
-        simulations = []
+        d = self.get_dim()
+        models = self.get_models()
+        simulations = np.zeros((0))
         for m in models:
-            simulations.append(m.simulate(Nsim))
-        return np.array(simulations)
+            simulations = np.append(simulations, m.simulate(Nsim))
+        return np.array(simulations).reshape(d, -1)
 
     def logpdf(self, x) -> np.array:
         """
         logpdf : summen av logpdf-ene
         """
-        size, models = self.get_size(), self.models()
+        size, models = self.get_size(), self.get_models()
         lpdf = 0
         dims = [0]
         for i in range(size):
@@ -119,8 +120,8 @@ class GSDE(SDE.SDE, Model):
         parameters: 3 x 1 np.array #NB: tester med alpha == 0.25 atm
         """
         assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
-        self.alpha, self.lam1, self.lam2 = parameters
-        self.alpha = self.alpha * self.t
+        a, self.lam1, self.lam2 = parameters
+        self.alpha = a * self.t
 
     def get_parameters(self) -> tuple:
         return self.alpha, self.lam1, self.lam2
@@ -181,10 +182,6 @@ class Gammadist(Model):
         a, b = self.get_parameters()
         return np.sum((a - 1) * np.log(x) - (x / b))
 
-    def logpdf(self, x) -> np.array:
-        low, high = self.get_parameters()
-        return uniform.logpdf(x, loc = low, scale = high)
-
 class UniformDist(Model):
     def __init__(self, parameters: np.array) -> None:
         """
@@ -195,7 +192,7 @@ class UniformDist(Model):
         self.low, self.high = parameters
 
     def get_dim(self) -> int:
-        return super().get_dim()
+        return self.dim
 
     def get_parameters(self) -> tuple:
         return self.low, self.high
@@ -208,7 +205,7 @@ class UniformDist(Model):
 
     def logpdf(self, x) -> np.array:
         low, high = self.get_parameters()
-        return uniform.logpdf(x, loc = low, scale = high)
+        return uniform.logpdf(x, loc = low, scale = high) 
 
 class RandomWalk(Model):
     def __init__(self, covariance: np.array) -> None:

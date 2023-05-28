@@ -35,7 +35,7 @@ class StationaryStats(Statistic):
         super().__init__()
 
     def get_dim(self) -> int:
-        return 2 #NB: legg til acf igjen etter hvert
+        return 3 #NB: legg til acf igjen etter hvert
 
     def statistic(self, x: np.array) -> np.array:
         """
@@ -43,10 +43,7 @@ class StationaryStats(Statistic):
         returns: n x 3 array
         """
         d = self.get_dim()
-        #z075 = np.quantile(x, 0.25, axis = 1)
-        #z025 = np.quantile(x, 0.75, axis = 1)
         m = np.mean(x, axis = 1)
         sd = np.std(x, axis = 1)
-        #c = np.array([acf(i, nlags = 1)[1] for i in x])
-
-        return np.reshape(np.array([z075, z025]), (d))
+        c = np.array([acf(i, nlags = 1)[1] for i in x])
+        return np.reshape(np.array([m, sd, c]), (d))

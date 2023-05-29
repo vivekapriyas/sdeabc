@@ -2,5 +2,6 @@
 Kode/__pycache__/*
 Kode/Tester/*
 res.py
+rejection_test.py
 *.npy 
 .vscode/*

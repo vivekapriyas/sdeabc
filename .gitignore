@@ -1,6 +1,7 @@
 .venv/*
 Kode/__pycache__/*
-Kode/tester.py
-Kode/sde_test.py
+Kode/Tester/*
 res.py
+rejection_test.py
 *.npy 
+.vscode/*

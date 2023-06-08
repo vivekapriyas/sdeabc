@@ -1,8 +1,9 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import Model
-import Statistic
-import Distance
+import Kode.sdeabc.Model as Model
+import Kode.sdeabc.Statistic as Statistic
+import Kode.sdeabc.Distance as Distance
+import time
 
 class Sampler:
     def __init__(self, obs: np.array, prior: Model, m: Model, s: Statistic) -> None:
@@ -30,7 +31,20 @@ class RejectionSampler(Sampler):
         self.distance = distance
         super().__init__(obs, prior, m, s)
 
-    def posterior(self, Nsim = 10**6, quant = 0.001, splits = None, verbose = False) -> dict:
+    def get_arrays(self, prior: Model, s: Statistic) -> tuple:
+        d1, d2 = prior.get_dim(), s.get_dim()
+        return np.zeros((d1, 0)), np.zeros((d2, 0))
+    
+    def posterior(self, Nsim = 10**6, quant = None, tol = None, splits = None, verbose = False):
+        if quant is not None:
+            return self.posterior_quant(Nsim = Nsim, quant = quant, splits = splits, verbose = verbose)
+        elif tol is not None:
+            return self.posterior_tol(Nsim = Nsim, tol = tol, verbose = verbose)
+        else:
+            raise ValueError
+
+
+    def posterior_quant(self, Nsim = 10**6, quant = 0.001, splits = None, verbose = False) -> dict:
         """
         returns approximate posterior + information
         given quantile of n samples are returned
@@ -55,6 +69,24 @@ class RejectionSampler(Sampler):
             post = np.concatenate((post, proposals[:, id]), axis = 1)
             verboseprint('In split {} the tolerance was {}.'.format(i + 1, qval))
         return {'distribution' : post, 'tolerance' : qval}
+
+    def posterior_tol(self, Nsim = 10**6, tol = 0.5, verbose = False):
+        verboseprint = self.verbosity(verbose)
+        s0 = self.s.statistic(self.obs)
+        theta, S = self.get_arrays(self.prior, self.s)
+        accepted = 0
+        for i in range(Nsim):
+            verboseprint('{}%'.format((i + 1 )/Nsim * 100))
+            proposal = self.prior.simulate(Nsim = 1)
+            z = self.model.simulate(parameters = proposal, Nsim = 1, timed = verbose)
+            sz = self.s.statistic(z)
+            d = self.distance.dist(sz, s0)
+            print(d)
+            if d <= tol:
+                theta = np.concatenate((theta, proposal), axis = 1)
+                #S = np.hstack((S, sz))
+                accepted += 1
+        return {'distribution' : theta, 'statistics': S, 'acceptance_ratio': accepted/Nsim}
 
 
 class MCMCSampler(Sampler):
@@ -107,7 +139,6 @@ class MCMCSampler(Sampler):
                 accepted += 1
             else:
                 theta[:, i + 1], S[:, i + 1] = theta[:, i], S[:, i]
-
         return {'distribution' : theta, 'statistics': S, 'acceptance_ratio': accepted/n}
     
     def adaptive_posterior(self, covs: np.array, n = 10**6, verbose = False) -> dict:

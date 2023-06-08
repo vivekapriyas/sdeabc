@@ -1,16 +1,29 @@
 import numpy as np
 from statsmodels.tsa.stattools import acf
-
+import time
 
 class Statistic:
     def __init__(self) -> None:
         pass
     
-    def statistic(self, x) -> np.array:
-        raise NotImplementedError
-
     def get_dim(self) -> int:
         raise NotImplementedError
+
+    def statistic(self, x) -> np.array:
+        raise NotImplementedError
+    
+
+class Identity(Statistic):
+    def __init__(self, dim) -> None:
+        self.dim = dim
+        super().__init__()
+    
+    def get_dim(self) -> int:
+        return self.dim
+
+    def statistic(self, x) -> np.array:
+        d = self.get_dim()
+        return np.reshape(x, (d))
 
 class Autocov(Statistic):
     """
@@ -45,5 +58,7 @@ class StationaryStats(Statistic):
         d = self.get_dim()
         m = np.mean(x, axis = 1)
         sd = np.std(x, axis = 1)
+        starttime = time.time()
         c = np.array([acf(i, nlags = 1)[1] for i in x])
+        print('c takes', time.time() -starttime)
         return np.reshape(np.array([m, sd, c]), (d))

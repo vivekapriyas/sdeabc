@@ -19,7 +19,7 @@ class EuclidianDistance(Distance):
         y: 1 x q array
         returns: 1 x n array 
         """
-        return np.array([np.linalg.norm((i - y)) for i in x])
+        return np.linalg.norm((x - y))
  
 
 class KernelDistance(Distance):

@@ -1,6 +1,7 @@
 import numpy as np
-import SDE
+import Kode.sdeabc.SDE as SDE
 from scipy.stats import gamma, uniform, multivariate_normal as mvnr
+from statsmodels.tsa.stattools import acf
 import time
 
 class Model:
@@ -111,9 +112,9 @@ class MA2(Model):
 
 
 class GSDE(SDE.SDE, Model):
-    def __init__(self, x0: float, t: int) -> None:
-        self.t = t
-        super().__init__(x0)
+    def __init__(self, x0: float, t: int, burn_in = 0, with_stats = False, correlated_solutions = False) -> None:
+        self.t, self.burn_in = t, burn_in
+        super().__init__(x0 = x0, with_stats = with_stats, correlated_solutions = correlated_solutions)
 
     def set_parameters(self, parameters: np.array) -> None:
         """
@@ -132,7 +133,13 @@ class GSDE(SDE.SDE, Model):
         Dx = 1 + alpha * dt
         return Nx / Dx
     
-    def simulate(self, parameters: np.array, Nsim = 1, timed = False, correlated_solutions = False) -> np.array:
+    def statistics(self, x: np.array):
+       m = np.mean(x)
+       sd = np.std(x)
+       c = np.mean([acf(i, nlags = 1)[1] for i in x])
+       return np.reshape(np.array([c, m, sd]), (3))
+    
+    def simulate(self, parameters: np.array, Nsim = 1, timed = False) -> np.array:
         """
         parameters: 3 x Nsim np.array
         results: Nsim x k array
@@ -141,7 +148,7 @@ class GSDE(SDE.SDE, Model):
         results = []
         for i in range(Nsim):
             self.set_parameters(parameters[:, i])
-            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  5 * 10**4, correlated_solutions = correlated_solutions)) #NB: vurder valgte verdier
+            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  self.burn_in)) #NB: vurder valgte verdier
         get_time()
         return np.array(results)
 

@@ -1,7 +1,7 @@
 import numpy as np
-import Kode.sdeabc.SDE as SDE
+import sdeabc.SDE as SDE
 from scipy.stats import gamma, uniform, multivariate_normal as mvnr
-from statsmodels.tsa.stattools import acf
+from sdeabc.Statistic import ac
 import time
 
 class Model:
@@ -112,17 +112,18 @@ class MA2(Model):
 
 
 class GSDE(SDE.SDE, Model):
-    def __init__(self, x0: float, t: int, burn_in = 0, with_stats = False, correlated_solutions = False) -> None:
-        self.t, self.burn_in = t, burn_in
-        super().__init__(x0 = x0, with_stats = with_stats, correlated_solutions = correlated_solutions)
+    def __init__(self, x0: float, t: int, M: int, N: int, burn_in = 0, with_stats = False, correlated_solutions = False) -> None:
+        self.t, self.M, self.N = t, M, N
+        self.burn_in = burn_in
+        super().__init__(x0 = x0, t = t, with_stats = with_stats, correlated_solutions = correlated_solutions)
 
     def set_parameters(self, parameters: np.array) -> None:
         """
-        parameters: 3 x 1 np.array #NB: tester med alpha == 0.25 atm
+        parameters: 3 x 1 np.array
         """
         assert parameters.shape[0] == 3, 'parameters should be given as array [[alpha],[lambda1], [lambda2]]'
         a, self.lam1, self.lam2 = parameters
-        self.alpha = a * self.t
+        self.alpha = a  #* self.t
 
     def get_parameters(self) -> tuple:
         return self.alpha, self.lam1, self.lam2
@@ -136,7 +137,7 @@ class GSDE(SDE.SDE, Model):
     def statistics(self, x: np.array):
        m = np.mean(x)
        sd = np.std(x)
-       c = np.mean([acf(i, nlags = 1)[1] for i in x])
+       c = np.mean([ac(i, lag = 1) for i in x])
        return np.reshape(np.array([c, m, sd]), (3))
     
     def simulate(self, parameters: np.array, Nsim = 1, timed = False) -> np.array:
@@ -144,13 +145,18 @@ class GSDE(SDE.SDE, Model):
         parameters: 3 x Nsim np.array
         results: Nsim x k array
         """
+        M, N = self.M, self.N
+        burn_in = self.burn_in
         get_time = self.timeit(timed)
         results = []
         for i in range(Nsim):
             self.set_parameters(parameters[:, i])
-            results.append(self.numerical_solution(M = 10**3, N = 10**4, burn_in =  self.burn_in)) #NB: vurder valgte verdier
+            results.append(self.numerical_solution(M = M, N = N, burn_in =  burn_in))
         get_time()
-        return np.array(results)
+        if Nsim == 1:
+            return results[0]
+        else:
+            return np.array(results)
 
 
 class Gammadist(Model):
@@ -186,6 +192,8 @@ class Gammadist(Model):
         NB only for use in mcmc ratio rn
         x : (d, ) array
         """
+        if x[0] <= 1:
+            return 0
         a, b = self.get_parameters()
         return np.sum((a - 1) * np.log(x) - (x / b))
 
@@ -247,5 +255,7 @@ class RandomWalk(Model):
         x: d x 
         mu: d x 
         """
+        if (any(x) <= 0) or (x[0] >= 1):
+            return 0
         cov = self.get_parameters()
         return mvnr.logpdf(x = x, mean = mu, cov = cov)

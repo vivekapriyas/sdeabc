@@ -14,7 +14,7 @@ def col_from_excel(df, col, round_freq = "S"):
         Index converted to DateTimeIndex format
     """
 
-    return pd.DatetimeIndex([from_excel(x, epoch = CALENDAR_MAC_1904) for x in df[col]]).round("S")
+    return pd.DatetimeIndex([from_excel(x, CALENDAR_MAC_1904) for x in df[col]]).round("S") #epoch =
 
 
 def load(fpath = 'wind.dat2', nullspeeds = False):

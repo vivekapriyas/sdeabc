@@ -1,8 +1,8 @@
-import Distance, Model, sampler, Statistic
+import sdeabc.Distance, sdeabc.Model, sdeabc.sampler, sdeabc.Statistic
 
 __all__ = [
-    'Distance',
-    'Model',
-    'sampler',
-    'Statistic'
+    'sdeabc.Distance',
+    'sdeabc.Model',
+    'sdeabc.sampler',
+    'sdeabc.Statistic'
 ]

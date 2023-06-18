@@ -7,6 +7,6 @@ rejection_test.py
 .vscode/*
 *__pycache__/
 Kode/sde_test.py
-Kode/plots.py
+Kode/plot/*
 Kode/windrun.py
 Kode/runs.py

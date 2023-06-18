@@ -1,8 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import Kode.sdeabc.Model as Model
-import Kode.sdeabc.Statistic as Statistic
-import Kode.sdeabc.Distance as Distance
+import sdeabc.Model as Model
+import sdeabc.Statistic as Statistic
+import sdeabc.Distance as Distance
 import time
 
 class Sampler:

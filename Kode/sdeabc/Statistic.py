@@ -2,6 +2,12 @@ import numpy as np
 from statsmodels.tsa.stattools import acf
 import time
 
+def ac(x: np.array, lag = 1) -> int:
+    n = len(x)
+    mn = np.mean(x)
+    v = np.var(x)
+    return ((1 / n)* np.sum(x[:(n - lag)] * x[lag:]) - mn**2) / v
+
 class Statistic:
     def __init__(self) -> None:
         pass
@@ -48,7 +54,7 @@ class StationaryStats(Statistic):
         super().__init__()
 
     def get_dim(self) -> int:
-        return 3 #NB: legg til acf igjen etter hvert
+        return 3
 
     def statistic(self, x: np.array) -> np.array:
         """
@@ -56,9 +62,7 @@ class StationaryStats(Statistic):
         returns: n x 3 array
         """
         d = self.get_dim()
-        m = np.mean(x, axis = 1)
-        sd = np.std(x, axis = 1)
-        starttime = time.time()
-        c = np.array([acf(i, nlags = 1)[1] for i in x])
-        print('c takes', time.time() -starttime)
-        return np.reshape(np.array([m, sd, c]), (d))
+        m = np.mean(x)
+        sd = np.std(x)
+        c = ac(x, lag = 1)
+        return np.reshape(np.array([c, m, sd]), (d))

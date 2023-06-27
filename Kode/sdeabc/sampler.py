@@ -118,27 +118,30 @@ class MCMCSampler(Sampler):
         for i in range(n - 1):
             verboseprint('{}%'.format((i + 1 )/n * 100))
             proposal = self.q.simulate(theta[:, i], Nsim = 1)
-            z = self.model.simulate(parameters = proposal, Nsim = 1)
-            sz = self.s.statistic(z)
-
-            N = prior.logpdf(proposal[:,0]) + kernel.logpdf(x = sz, mu = s0)
-            D = prior.logpdf(theta[:, i]) + kernel.logpdf(x = S[:, i], mu = s0)
-            print('nåværende theta:', theta[:, i])
-            print('forslag', proposal[:,0])
-            
-            print('nåværende S:', S[:, i])
-            print('forslag:', sz)
-            print('N - D', N- D)
-            a, u = 1, 0
-            if N - D <= 0:
-                a = np.exp(N - D)
-                u = np.random.uniform(low = 0, high = 1, size = 1)
-            print('u:', u)
-            if u <= a:
-                theta[:, i + 1], S[:, i + 1] = proposal[:,0], sz
-                accepted += 1
-            else:
+            if (proposal[0]) <= 0 or (proposal[1] <= 1): #NB dette er veldig spesifikt for sde-en nå
                 theta[:, i + 1], S[:, i + 1] = theta[:, i], S[:, i]
+            else:
+                z = self.model.simulate(parameters = proposal, Nsim = 1)
+                sz = self.s.statistic(z)
+
+                N = prior.logpdf(proposal[:,0]) + kernel.logpdf(x = sz, mu = s0)
+                D = prior.logpdf(theta[:, i]) + kernel.logpdf(x = S[:, i], mu = s0)
+                print('nåværende theta:', theta[:, i])
+                print('forslag', proposal[:,0])
+                
+                print('nåværende S:', S[:, i])
+                print('forslag:', sz)
+                print('N - D', N- D)
+                a, u = 1, 0
+                if N - D <= 0:
+                    a = np.exp(N - D)
+                    u = np.random.uniform(low = 0, high = 1, size = 1)
+                print('u:', u)
+                if u <= a:
+                    theta[:, i + 1], S[:, i + 1] = proposal[:,0], sz
+                    accepted += 1
+                else:
+                    theta[:, i + 1], S[:, i + 1] = theta[:, i], S[:, i]
         return {'distribution' : theta, 'statistics': S, 'acceptance_ratio': accepted/n}
     
     def adaptive_posterior(self, covs: np.array, n = 10**6, verbose = False) -> dict:

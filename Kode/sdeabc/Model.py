@@ -1,6 +1,7 @@
 import numpy as np
 import sdeabc.SDE as SDE
-from scipy.stats import gamma, uniform, multivariate_normal as mvnr
+from scipy.stats import gamma, uniform
+from scipy.stats import multivariate_normal as mvnr
 from sdeabc.Statistic import ac
 import time
 
@@ -192,8 +193,8 @@ class Gammadist(Model):
         NB only for use in mcmc ratio rn
         x : (d, ) array
         """
-        if x[0] <= 1:
-            return 0
+        """if x[0] <= 1:
+            return - np.infty"""
         a, b = self.get_parameters()
         return np.sum((a - 1) * np.log(x) - (x / b))
 
@@ -220,7 +221,8 @@ class UniformDist(Model):
 
     def logpdf(self, x) -> np.array:
         low, high = self.get_parameters()
-        return uniform.logpdf(x, loc = low, scale = high) 
+        lp = uniform.logpdf(x, loc = low, scale = high)
+        return lp
 
 class RandomWalk(Model):
     def __init__(self, covariance: np.array) -> None:
@@ -259,3 +261,5 @@ class RandomWalk(Model):
             return 0
         cov = self.get_parameters()
         return mvnr.logpdf(x = x, mean = mu, cov = cov)
+
+

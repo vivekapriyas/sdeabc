@@ -46,7 +46,7 @@ class SDE:
                 x[:,0] = self.x0
                 for n in range(N - 1):
                     x[:,n + 1] = self.implicit_milstein(x[:,n], dt, dW[:,n])
-                return x.ravel(order = 'C')[burn_in:]
+                return x[:, burn_in:].ravel(order = 'C')
         return solve
 
     def numerical_solution(self, M: int, N: int, burn_in = 0) -> np.array:

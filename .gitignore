@@ -1,17 +1,5 @@
 .venv/*
 Kode/__pycache__/*
-Kode/Tester/*
-res.py
-rejection_test.py
 *.npy 
 .vscode/*
 *__pycache__/
-Kode/sde_test.py
-Kode/plot/*
-Kode/windrun.py
-Kode/runs.py
-Kode/runs_copy.py
-Kode/windrun_copy.py
-Kode/windrun_copy_ii.py
-Kode/rejection_test_ii.py
-Kode/windplot.py
